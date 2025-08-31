@@ -1,0 +1,5 @@
+websockets
+nest-asyncio
+llama-cpp-python
+huggingface-hub
+asyncpg

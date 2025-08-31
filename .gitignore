@@ -1,0 +1,4 @@
+.env
+code
+client/node_modules
+.venv3.13
