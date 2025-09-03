@@ -62,6 +62,7 @@ const FormattedResponse = ({ content, isStreaming }) => {
       }
     }
 
+    // Look for explanation section starting after reasoning_end
     const explanationStartIndex = content.indexOf('<reasoning_end>');
     if (explanationStartIndex !== -1) {
       const explanationEndIndex = content.indexOf('<final_sql_query_start>');
@@ -69,11 +70,20 @@ const FormattedResponse = ({ content, isStreaming }) => {
         explanation = content.substring(
           explanationStartIndex + '<reasoning_end>'.length,
           explanationEndIndex
-        ).replace('Explanation:', '').trim();
+        ).replace(/^Explanation:\s*/i, '').trim();
       } else if (isStreaming) {
-        explanation = content.substring(
+        // For streaming, get everything after reasoning_end but clean it up
+        let tempExplanation = content.substring(
           explanationStartIndex + '<reasoning_end>'.length
-        ).replace('Explanation:', '').trim();
+        ).replace(/^Explanation:\s*/i, '').trim();
+        
+        // Remove any incomplete SQL query parts that might have started
+        const sqlStartMatch = tempExplanation.indexOf('<final_sql_query');
+        if (sqlStartMatch !== -1) {
+          tempExplanation = tempExplanation.substring(0, sqlStartMatch).trim();
+        }
+        
+        explanation = tempExplanation;
       }
     }
 
@@ -112,9 +122,9 @@ const FormattedResponse = ({ content, isStreaming }) => {
 
   useEffect(() => {
     const shouldUpdate = (prev, curr) =>
-      !prev.reasoning && curr.reasoning ||
-      !prev.explanation && curr.explanation ||
-      !prev.sql && curr.sql;
+      (!prev.reasoning && curr.reasoning) ||
+      (!prev.explanation && curr.explanation) ||
+      (!prev.sql && curr.sql);
 
     if (isStreaming) {
       if (shouldUpdate(partialSections, partial)) {
@@ -178,19 +188,20 @@ const FormattedResponse = ({ content, isStreaming }) => {
   };
 
   return (
-    <div className="formatted-response">
+    <div className="w-full flex flex-col gap-3">
       {(hasReasoning || (isStreaming && partial.reasoning)) && sectionVisibility.reasoning && (
-        <div className="response-section reasoning-section">
+        <div className="border border-edge-grey-300 dark:border-edge-grey-600 rounded-xl overflow-hidden bg-edge-grey-50 dark:bg-edge-grey-800 transition-all hover:shadow-edge">
+          <div className="border-l-4 border-edge-blue"></div>
           <div 
-            className="section-header" 
+            className="p-4 cursor-pointer flex items-center justify-between bg-edge-grey-100 dark:bg-edge-grey-700 border-b border-edge-grey-200 dark:border-edge-grey-600 hover:bg-edge-grey-200 dark:hover:bg-edge-grey-600 transition-colors"
             onClick={() => toggleSection('reasoning')}
             aria-expanded={expandedSections.reasoning}
             role="button"
             tabIndex={0}
           >
-            <h4>
-              <span className="section-icon">
-                {expandedSections.reasoning ? '▼' : '▶'}
+            <h4 className="font-semibold text-edge-black dark:text-edge-white text-sm uppercase tracking-wide flex items-center gap-3">
+              <span className={`transition-transform ${expandedSections.reasoning ? 'rotate-90' : ''}`}>
+                ▶
               </span>
               {getSectionIcon('reasoning')} Neural Reasoning
             </h4>
@@ -199,26 +210,30 @@ const FormattedResponse = ({ content, isStreaming }) => {
           {expandedSections.reasoning && (
             <div 
               ref={reasoningRef}
-              className={`section-content reasoning-content ${isStreaming ? 'typing-animation' : ''}`}
+              className={`p-4 bg-blue-50 dark:bg-blue-900 bg-opacity-20 ${isStreaming ? 'relative' : ''}`}
             >
-              <pre>{reasoning}</pre>
+              <pre className="font-mono text-sm leading-relaxed whitespace-pre-wrap text-edge-black dark:text-edge-white">{reasoning}</pre>
+              {isStreaming && hasReasoning && (
+                <span className="inline-block ml-2 w-2 h-4 bg-edge-blue rounded-full animate-pulse"></span>
+              )}
             </div>
           )}
         </div>
       )}
 
       {(hasExplanation || (isStreaming && partial.explanation)) && sectionVisibility.explanation && (
-        <div className="response-section explanation-section">
+        <div className="border border-edge-grey-300 dark:border-edge-grey-600 rounded-xl overflow-hidden bg-edge-grey-50 dark:bg-edge-grey-800 transition-all hover:shadow-edge">
+          <div className="border-l-4 border-edge-green"></div>
           <div 
-            className="section-header" 
+            className="p-4 cursor-pointer flex items-center justify-between bg-edge-grey-100 dark:bg-edge-grey-700 border-b border-edge-grey-200 dark:border-edge-grey-600 hover:bg-edge-grey-200 dark:hover:bg-edge-grey-600 transition-colors"
             onClick={() => toggleSection('explanation')}
             aria-expanded={expandedSections.explanation}
             role="button"
             tabIndex={0}
           >
-            <h4>
-              <span className="section-icon">
-                {expandedSections.explanation ? '▼' : '▶'}
+            <h4 className="font-semibold text-edge-black dark:text-edge-white text-sm uppercase tracking-wide flex items-center gap-3">
+              <span className={`transition-transform ${expandedSections.explanation ? 'rotate-90' : ''}`}>
+                ▶
               </span>
               {getSectionIcon('explanation')} Query Explanation
             </h4>
@@ -227,26 +242,30 @@ const FormattedResponse = ({ content, isStreaming }) => {
           {expandedSections.explanation && (
             <div 
               ref={explanationRef}
-              className={`section-content explanation-content ${isStreaming ? 'typing-animation' : ''}`}
+              className={`p-4 bg-green-50 dark:bg-green-900 bg-opacity-20 ${isStreaming ? 'relative' : ''}`}
             >
-              <p>{explanation}</p>
+              <p className="text-edge-black dark:text-edge-white leading-relaxed">{explanation}</p>
+              {isStreaming && hasExplanation && (
+                <span className="inline-block ml-2 w-2 h-4 bg-edge-green rounded-full animate-pulse"></span>
+              )}
             </div>
           )}
         </div>
       )}
 
       {(hasSql || (isStreaming && partial.sql)) && sectionVisibility.sql && (
-        <div className="response-section sql-section">
+        <div className="border border-edge-grey-300 dark:border-edge-grey-600 rounded-xl overflow-hidden bg-edge-grey-50 dark:bg-edge-grey-800 transition-all hover:shadow-edge">
+          <div className="border-l-4 border-edge-purple"></div>
           <div 
-            className="section-header sql-header" 
+            className="p-4 cursor-pointer flex items-center justify-between bg-edge-grey-100 dark:bg-edge-grey-700 border-b border-edge-grey-200 dark:border-edge-grey-600 hover:bg-edge-grey-200 dark:hover:bg-edge-grey-600 transition-colors"
             onClick={() => toggleSection('sql')}
             aria-expanded={expandedSections.sql}
             role="button"
             tabIndex={0}
           >
-            <h4>
-              <span className="section-icon">
-                {expandedSections.sql ? '▼' : '▶'}
+            <h4 className="font-semibold text-edge-black dark:text-edge-white text-sm uppercase tracking-wide flex items-center gap-3">
+              <span className={`transition-transform ${expandedSections.sql ? 'rotate-90' : ''}`}>
+                ▶
               </span>
               {getSectionIcon('sql')} Generated Query
             </h4>
@@ -256,7 +275,11 @@ const FormattedResponse = ({ content, isStreaming }) => {
                   e.stopPropagation();
                   copyToClipboard();
                 }}
-                className={`copy-btn ${copySuccess ? 'copy-success' : ''}`}
+                className={`px-3 py-1 rounded-lg text-xs font-semibold transition-colors ${
+                  copySuccess 
+                    ? 'bg-edge-green text-edge-white' 
+                    : 'bg-edge-cyan hover:bg-edge-cyan-dark text-edge-white'
+                }`}
                 aria-label="Copy SQL query"
               >
                 {copySuccess ? '✅ Copied!' : '📋 Copy SQL'}
@@ -267,9 +290,15 @@ const FormattedResponse = ({ content, isStreaming }) => {
           {expandedSections.sql && (
             <div 
               ref={sqlRef}
-              className={`section-content sql-content ${isStreaming ? 'typing-animation' : ''}`}
+              className={`p-4 bg-purple-50 dark:bg-purple-900 bg-opacity-20 ${isStreaming ? 'relative' : ''}`}
             >
-              <pre className="sql-code">{sql}</pre>
+              <pre className="font-mono text-sm leading-relaxed p-4 bg-edge-white dark:bg-edge-grey-700 text-edge-black dark:text-edge-white border border-edge-grey-200 dark:border-edge-grey-600 rounded-lg overflow-x-auto whitespace-pre-wrap relative">
+                <span className="absolute top-2 right-2 text-xs font-bold text-edge-grey-500 uppercase tracking-widest">SQL</span>
+                {sql}
+              </pre>
+              {isStreaming && hasSql && (
+                <span className="inline-block ml-2 w-2 h-4 bg-edge-purple rounded-full animate-pulse"></span>
+              )}
             </div>
           )}
         </div>
