@@ -45,8 +45,8 @@ token_generation_metrics = {
 
 # Configuration
 device = "cpu"
-model_repo = "devMubashir/llama-3.2-3b-ttsql-reasoning-v4"
-model_file = "unsloth.Q4_K_M.gguf"
+model_repo = "devMubashir/text-to-sql-reasoning-llama3.2-3b"
+model_file = "unsloth.Q8_0.gguf"
 
 # Idle timeout (seconds)
 IDLE_TIMEOUT = 600
@@ -489,7 +489,7 @@ async def handle_chat_request(websocket, data, user_id):
         response_generator = llm.create_chat_completion(
             messages=messages,
             stream=True,
-            # max_tokens=2048,
+            max_tokens=2048,
             temperature=0,
         )
         
